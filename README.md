@@ -254,8 +254,8 @@ while silently lacking OMT and SDI entirely:
    build (see [License](#license)).
 
 ```sh
-dpkg-buildpackage -b -us -uc      # -> ../8kloud-switcher_0.7.4_amd64.deb
-sudo apt install ../8kloud-switcher_0.7.4_amd64.deb
+dpkg-buildpackage -b -us -uc      # -> ../8kloud-switcher_0.7.5_amd64.deb
+sudo apt install ../8kloud-switcher_0.7.5_amd64.deb
 ```
 
 The NVIDIA driver and NVENC runtime come in as package dependencies; the

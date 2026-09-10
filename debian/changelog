@@ -1,103 +1,15 @@
-8kloud-switcher (0.7.4) resolute; urgency=medium
+8kloud-switcher (0.7.5) resolute; urgency=medium
 
-  * Quiet the libav errors every SRT connect logged while waiting for the
-    first keyframe ("PPS id out of range", "Skipping invalid undecodable
-    NALU", "Missing Sequence Header", for AV1 "No sequence header
-    available"). A live stream is joined mid-GOP, so every packet until the
-    keyframe is an error to a decoder and none of it is a fault. Both the
-    stream probe and the decode loop up to the first picture now run under
-    a per-thread quiet scope; decoder messages after that still show, and
-    a failed probe logs its own warning.
-  * Build the LGPL FFmpeg libraries with an $ORIGIN runpath instead of
-    --enable-rpath, which wrote the build tree's absolute path into every
-    library and into the pkg-config files, so the packaged binaries carried
-    it too and preferred the build tree's copies on the machine that built
-    them.
-  * Link each executable with its final RPATH (KLOUD_PRIVATE_RPATH, set by
-    debian/rules) instead of rewriting it at install time. The rewrite left
-    dev binaries with an empty RPATH element, which ld.so reads as the
-    current working directory. Package binaries now carry the private
-    libdir alone.
+  * Add an SRT STREAM card to the console's OUTPUTS tab. It edits the
+    transport (send on/off, listener/caller/rendezvous, host, port, latency
+    in ms, passphrase and AES key length, stream id, any other FFmpeg srt
+    option) and the encoding (HEVC/AV1, video and AAC bitrates, keyframe
+    interval, NVENC preset and path). The fields fold into the one FFmpeg
+    URL the show file stores and --srt-out takes, so existing show files
+    keep working and a pasted URL fills the fields; SEND off parks the URL.
+  * The encoder backend and preset, CLI-only until now, persist in the
+    show file. New --srt-keyframe SEC and --srt-audio-bitrate KBPS flags on
+    both executables; both NVENC backends take the keyframe interval.
 
- -- Devin Block <devin@devinblock.com>  Fri, 04 Sep 2026 14:07:33 +0000
+ -- Devin Block <devin@devinblock.com>  Thu, 10 Sep 2026 02:02:16 +0000
 
-8kloud-switcher (0.7.3) resolute; urgency=medium
-
-  * Fix AV1 SRT ingest and AV1 media clips decoding nothing since 0.7.2:
-    enabling libdav1d made it FFmpeg's default AV1 decoder, and the SRT
-    input took that default. libdav1d is software-only, ignores the CUDA
-    device the input attaches, and cannot parse the draft AV1-in-MPEG-TS
-    the SRT output sends, so the program went black while audio kept
-    flowing. The input now picks the first decoder that accepts a CUDA
-    hw_device_ctx (the native av1/hevc front ends on NVDEC) and falls
-    back to FFmpeg's default only when none exists.
-  * Add an ingest test that encodes HEVC and AV1 with NVENC, muxes each
-    into the transport stream the SRT output sends, and plays it back
-    through the SRT input on NVDEC; it fails without the fix.
-
- -- Devin Block <devin@devinblock.com>  Fri, 04 Sep 2026 13:12:00 +0000
-
-8kloud-switcher (0.7.2) resolute; urgency=medium
-
-  * Build the LGPL FFmpeg with libdav1d (BSD-2-Clause) so AV1 decodes in
-    software where no NVDEC device is available. FFmpeg's native av1
-    decoder is a hwaccel-only front end, so without it the AV1 program-
-    output round-trip test failed and operator AV1 media needed a GPU.
-  * Record the private FFmpeg's runtime dependencies (libsrt, gnutls,
-    dav1d, zlib, bzip2, lzma) in Depends. They were previously never
-    scanned, so the package installed cleanly on a fresh host and then
-    failed to load. debian/shlibs.local keeps dpkg-shlibdeps from
-    resolving the private libavcodec to the distribution's GPL build.
-
- -- Devin Block <devin@devinblock.com>  Wed, 02 Sep 2026 01:47:07 +0000
-
-8kloud-switcher (0.7.1) resolute; urgency=medium
-
-  * Make libomt-c and the patched libvmx the default OMT runtime:
-    packaging/build-omt.sh builds both from source into third_party/omt.
-  * Pre-build VMX decoders for the show format at engine start and per
-    input on patch (libomt-c's decoder pool), so a new 8K OMT connection's
-    first frame arrives on time instead of 80 ms late with two dropped
-    frames.
-  * Document the libomt-c versus stock-libomt measurements at 1080p, 4K and
-    8K in docs/omt.md.
-
- -- Devin Block <devin@devinblock.com>  Wed, 02 Sep 2026 01:35:18 +0000
-
-8kloud-switcher (0.7.0) resolute; urgency=medium
-
-  * Replace the Qt desktop GUI with a web console served by 8kloud-switcher
-    itself (default port 9924): the multiview streams to the browser as JPEG
-    frames, and the WebSocket speaks the remote-control command language plus
-    JSON commands for source patching, playlists and show settings.
-  * Send the multiview wall over OMT with labels and tally rendered into the
-    frame, on by default in the console (--no-mv-omt-out to disable).
-  * Persist the show through a QSettings-compatible INI reader/writer, so an
-    existing show.ini loads unchanged. Qt 6 is no longer a dependency.
-  * Add an OUTPUTS tab for the restart-to-apply sender, SDI, SRT and bitrate
-    settings, and a draggable monitor/deck split with selectable PGM/PVW
-    layouts.
-  * Fix the final show save running after engine stop, which emptied the
-    stored input list on shutdown.
-
- -- Devin Block <devin@devinblock.com>  Wed, 02 Sep 2026 00:08:14 +0000
-
-8kloud-switcher (0.6.6) resolute; urgency=medium
-
-  * Warn loudly at configure time when the OMT or DeckLink SDK is absent,
-    instead of silently building without OMT or SDI support.
-  * Document that third_party/ is gitignored and both SDKs must be vendored
-    before building or packaging.
-
- -- Devin Block <devin@devinblock.com>  Mon, 10 Aug 2026 23:55:00 +0000
-
-8kloud-switcher (0.6.5) resolute; urgency=medium
-
-  * First Debian package. Targets Ubuntu Server 26.04 with the NVIDIA driver,
-    CUDA toolkit headers and Qt 6.
-  * Links and ships an LGPL-2.1+ FFmpeg built by
-    packaging/build-ffmpeg-lgpl.sh rather than the distribution's
-    GPL-configured one, alongside the OMT runtime, in a private libdir.
-  * Relicensed to MPL-2.0.
-
- -- Devin Block <devin@devinblock.com>  Mon, 10 Aug 2026 23:30:00 +0000

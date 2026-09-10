@@ -4,7 +4,7 @@
 	"name": "8kloud-switcher",
 	"shortname": "8kloud-switcher",
 	"description": "Control the 8Kloud Switcher live video switcher (buses, transitions, DSKs, media, recording, audio) over its TCP remote-control port",
-	"version": "0.7.4",
+	"version": "0.7.5",
 	"license": "MPL-2.0",
 	"repository": "https://github.com/moocowsheep/8KloudSwitcher",
 	"bugs": "https://github.com/moocowsheep/8KloudSwitcher/issues",
