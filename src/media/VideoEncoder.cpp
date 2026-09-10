@@ -4,6 +4,8 @@
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+#include <algorithm>
+
 #include "core/Log.h"
 #include "media/FfmpegNvenc.h"
 #include "media/IVideoEncoder.h"
@@ -63,6 +65,12 @@ bool parseEncoderPreset(std::string_view text, EncoderPreset& out) {
         }
     }
     return false;
+}
+
+int gopFrames(const EncoderConfig& cfg, const VideoFormatDesc& show) {
+    const int ms = cfg.keyframeMs > 0 ? cfg.keyframeMs : kDefaultKeyframeMs;
+    const double fps = double(show.fpsN) / double(show.fpsD);
+    return std::max(1, int(fps * ms / 1000.0 + 0.5));
 }
 
 EncoderPreset resolveEncoderPreset(EncoderPreset preset,

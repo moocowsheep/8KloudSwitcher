@@ -59,7 +59,8 @@ AV1/MPEG-TS draft patch, and `SrtOutput` explicitly enables its muxer option.
 Both are configured the same way on purpose, so the two paths are swappable
 mid-show: tuning ULTRA_LOW_LATENCY, CBR, single-frame VBV
 (`bufsize = bitrate / fps`), `frameIntervalP = 1` (IPP, no B-frames), no
-lookahead, `zeroReorderDelay`, IDR every ~2 s, HEVC Main 8-bit 4:2:0, and
+lookahead, `zeroReorderDelay`, IDR every ~2 s (`EncoderConfig::keyframeMs`,
+the SRT card's KEYFRAME field or `--srt-keyframe`), HEVC Main 8-bit 4:2:0, and
 in-band parameter sets for MPEG-TS (extradata for Matroska).
 
 ## Selection

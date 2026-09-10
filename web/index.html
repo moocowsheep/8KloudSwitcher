@@ -138,14 +138,70 @@
             <div class="row"><span class="eyebrow">CLEAN</span><input type="text" data-setting="cleanSdiOut" placeholder="decklink://1 (empty = off)"></div>
             <div class="live-note" id="liveSdiOut"></div>
           </div>
-          <div class="keyer-card">
-            <div class="keyer-title">SRT OUTPUT</div>
-            <input type="text" data-setting="srtOut" placeholder="srt://:9710?mode=listener&latency=120000 (empty = off)">
-            <div class="row">
-              <span class="eyebrow">CODEC</span>
-              <select data-setting="srtCodec"><option value="hevc">HEVC</option><option value="av1">AV1</option></select>
-              <span class="eyebrow">KBPS</span>
-              <input type="number" data-setting="srtBitrateKbps" min="0" max="400000" step="500" placeholder="auto">
+          <div class="keyer-card srt-card">
+            <div class="keyer-title">SRT STREAM&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;<span class="hint">TRANSPORT &amp; ENCODING · HEVC/AV1 + AAC IN MPEG-TS</span></div>
+            <div class="settings-columns">
+              <div class="settings-col">
+                <div class="row">
+                  <label class="check"><input type="checkbox" data-setting="srtSend"> SEND</label>
+                  <span class="eyebrow">MODE</span>
+                  <select data-setting="srtMode" title="Listener waits for the viewer to call in; caller connects out to a relay or receiver; rendezvous has both sides call the same port">
+                    <option value="listener">Listener</option><option value="caller">Caller</option><option value="rendezvous">Rendezvous</option>
+                  </select>
+                  <span class="eyebrow">LATENCY</span>
+                  <input type="number" data-setting="srtLatencyMs" min="0" max="10000" step="10" placeholder="120" title="SRT receive/peer latency: the retransmission window. Around 3-4x the round-trip time; 0 = libsrt default (120 ms)"><span class="unit">ms</span>
+                </div>
+                <div class="row">
+                  <span class="eyebrow">HOST</span>
+                  <input type="text" data-setting="srtHost" placeholder="empty = every interface (listener)" title="Peer address for caller/rendezvous; bind address (usually empty) for a listener">
+                  <span class="eyebrow">PORT</span>
+                  <input type="number" data-setting="srtPort" min="1" max="65535" step="1" title="UDP port">
+                </div>
+                <div class="row">
+                  <span class="eyebrow">PASSPHRASE</span>
+                  <input type="text" data-setting="srtPassphrase" placeholder="empty = unencrypted (10-79 characters)" title="Encrypts the stream; the receiver needs the same passphrase" autocomplete="off">
+                  <select data-setting="srtKeyLen" data-numeric title="AES key length used with the passphrase">
+                    <option value="0">AES auto</option><option value="16">AES-128</option><option value="24">AES-192</option><option value="32">AES-256</option>
+                  </select>
+                </div>
+                <div class="row">
+                  <span class="eyebrow">STREAM ID</span>
+                  <input type="text" data-setting="srtStreamId" placeholder="#!::r=live/show,m=publish  (relays and SRT gateways)" title="SRT stream id: what a relay, gateway or media server uses to route this caller">
+                </div>
+                <div class="row">
+                  <span class="eyebrow">EXTRA</span>
+                  <input type="text" data-setting="srtExtra" placeholder="pkt_size=1316&maxbw=... (other FFmpeg srt options)" title="Any further FFmpeg srt protocol options, joined with &">
+                </div>
+                <div class="row">
+                  <span class="eyebrow">URL</span>
+                  <input type="text" data-setting="srtOut" class="mono" placeholder="srt://:9710?mode=listener&latency=120000" title="The resulting FFmpeg URL. Paste a full URL here to fill the fields from it">
+                </div>
+              </div>
+              <div class="settings-col">
+                <div class="row">
+                  <span class="eyebrow">CODEC</span>
+                  <select data-setting="srtCodec" title="AV1 needs an AV1-capable NVENC and the patched FFmpeg; recordings stay HEVC"><option value="hevc">HEVC</option><option value="av1">AV1</option></select>
+                  <span class="eyebrow">VIDEO</span>
+                  <input type="number" data-setting="srtBitrateKbps" min="0" max="400000" step="500" placeholder="auto" title="CBR video bitrate; empty = auto from the output format (0.04 bit/pixel, at least 8 Mbps)"><span class="unit">kbps</span>
+                </div>
+                <div class="row">
+                  <span class="eyebrow">AUDIO</span>
+                  <input type="number" data-setting="srtAudioKbps" min="0" max="512" step="16" placeholder="160" title="AAC stereo bitrate; empty = 160 kbps"><span class="unit">kbps</span>
+                  <span class="eyebrow">KEYFRAME</span>
+                  <input type="number" data-setting="srtKeyframeSec" min="0" max="60" step="0.5" placeholder="2" title="IDR interval. A viewer joins at the next keyframe; shorter joins faster and costs bits. Empty = 2 s"><span class="unit">s</span>
+                </div>
+                <div class="row">
+                  <span class="eyebrow">PRESET</span>
+                  <select data-setting="encoderPreset" title="NVENC speed/quality preset. Auto: P4 up to 4K, P2 above it (measured quality-identical, and P2 keeps 8K on time)">
+                    <option value="auto">Auto</option><option value="p1">P1 · fastest</option><option value="p2">P2</option><option value="p3">P3</option><option value="p4">P4</option><option value="p5">P5</option><option value="p6">P6</option><option value="p7">P7 · best</option>
+                  </select>
+                  <span class="eyebrow">NVENC</span>
+                  <select data-setting="encoder" title="Which NVENC path opens the encoder: FFmpeg's hevc/av1_nvenc, or libnvidia-encode directly. Auto falls back to direct when FFmpeg lacks the wrapper">
+                    <option value="auto">Auto</option><option value="ffmpeg">FFmpeg</option><option value="direct">Direct</option>
+                  </select>
+                </div>
+                <div class="live-note">Fixed for latency: CBR, ultra-low-latency tune, single-frame VBV, no B-frames, no lookahead. Preset and NVENC path also apply to recording.</div>
+              </div>
             </div>
             <div class="live-note" id="liveSrt"></div>
           </div>

@@ -56,10 +56,14 @@ bool ShowFile::State::cfgEquals(const EngineConfig& a, const EngineConfig& b) {
            a.mvW == b.mvW && a.mvH == b.mvH &&
            a.sdiOutRef == b.sdiOutRef &&
            a.cleanSdiOutRef == b.cleanSdiOutRef &&
-           a.srtUrl == b.srtUrl &&
+           a.srtUrl == b.srtUrl && a.srtSend == b.srtSend &&
            a.srtBitrateKbps == b.srtBitrateKbps &&
            a.srtCodec == b.srtCodec &&
-           a.recordBitrateKbps == b.recordBitrateKbps && a.audio == b.audio &&
+           a.srtKeyframeMs == b.srtKeyframeMs &&
+           a.srtAudioKbps == b.srtAudioKbps &&
+           a.recordBitrateKbps == b.recordBitrateKbps &&
+           a.encoder == b.encoder && a.encoderPreset == b.encoderPreset &&
+           a.audio == b.audio &&
            a.masterAudioDelayMs == b.masterAudioDelayMs;
 }
 
@@ -121,8 +125,21 @@ bool ShowFile::load(State& st) const {
     media::parseVideoCodec(
         s.getString("show/srtCodec", media::videoCodecName(st.cfg.srtCodec)),
         st.cfg.srtCodec);
+    // Absent in pre-0.8 show files: a stored URL was always live.
+    st.cfg.srtSend = s.getBool("show/srtSend", st.cfg.srtSend);
+    st.cfg.srtKeyframeMs =
+        std::clamp(s.getInt("show/srtKeyframeMs", st.cfg.srtKeyframeMs), 0, 60000);
+    st.cfg.srtAudioKbps =
+        std::clamp(s.getInt("show/srtAudioKbps", st.cfg.srtAudioKbps), 0, 512);
     st.cfg.recordBitrateKbps =
         s.getInt("show/recordBitrateKbps", st.cfg.recordBitrateKbps);
+    media::parseEncoderBackend(
+        s.getString("show/encoder", media::encoderBackendName(st.cfg.encoder)),
+        st.cfg.encoder);
+    media::parseEncoderPreset(
+        s.getString("show/encoderPreset",
+                    media::encoderPresetName(st.cfg.encoderPreset)),
+        st.cfg.encoderPreset);
     st.cfg.audio = s.getBool("show/audio", st.cfg.audio);
     st.cfg.masterAudioDelayMs =
         s.getInt("show/masterDelayMs", st.cfg.masterAudioDelayMs);
@@ -224,7 +241,12 @@ bool ShowFile::save(const State& st) const {
     s.set("show/srtOut", st.cfg.srtUrl);
     s.set("show/srtBitrateKbps", st.cfg.srtBitrateKbps);
     s.set("show/srtCodec", media::videoCodecName(st.cfg.srtCodec));
+    s.set("show/srtSend", st.cfg.srtSend);
+    s.set("show/srtKeyframeMs", st.cfg.srtKeyframeMs);
+    s.set("show/srtAudioKbps", st.cfg.srtAudioKbps);
     s.set("show/recordBitrateKbps", st.cfg.recordBitrateKbps);
+    s.set("show/encoder", media::encoderBackendName(st.cfg.encoder));
+    s.set("show/encoderPreset", media::encoderPresetName(st.cfg.encoderPreset));
     s.set("show/audio", st.cfg.audio);
     s.set("show/masterDelayMs", st.cfg.masterAudioDelayMs);
 

@@ -68,7 +68,10 @@ bool Session::restartRequired() const {
            p.mvOmtOut != a.mvOmtOut || p.mvOmtOutName != a.mvOmtOutName ||
            p.mvW != a.mvW || p.mvH != a.mvH || p.sdiOutRef != a.sdiOutRef ||
            p.cleanSdiOutRef != a.cleanSdiOutRef || p.srtUrl != a.srtUrl ||
+           p.srtSend != a.srtSend ||
            p.srtBitrateKbps != a.srtBitrateKbps || p.srtCodec != a.srtCodec ||
+           p.srtKeyframeMs != a.srtKeyframeMs ||
+           p.srtAudioKbps != a.srtAudioKbps ||
            p.recordBitrateKbps != a.recordBitrateKbps ||
            p.encoder != a.encoder || p.encoderPreset != a.encoderPreset ||
            p.audio != a.audio;

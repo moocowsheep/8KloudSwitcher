@@ -147,12 +147,13 @@ bool NvencDirect::open(CudaCtx& cuda, const VideoFormatDesc& show,
     }
 
     // Same shape as the FFmpeg backend's options (preset/ull, CBR,
-    // single-frame VBV, IPP, IDR ~2 s) so the two paths are swappable mid-show.
+    // single-frame VBV, IPP, IDR every keyframeMs) so the two paths are
+    // swappable mid-show.
     cfg_ = presetCfg.presetCfg;
     cfg_.version = NV_ENC_CONFIG_VER;
     cfg_.profileGUID = av1Codec ? NV_ENC_AV1_PROFILE_MAIN_GUID
                                 : NV_ENC_HEVC_PROFILE_MAIN_GUID;
-    cfg_.gopLength = uint32_t(std::max(1, int(fps * 2)));
+    cfg_.gopLength = uint32_t(gopFrames(cfg, show));
     cfg_.frameIntervalP = 1;
     cfg_.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR;
     cfg_.rcParams.averageBitRate = uint32_t(bitrate_);
@@ -236,9 +237,10 @@ bool NvencDirect::open(CudaCtx& cuda, const VideoFormatDesc& show,
         return false;
     }
 
-    KLOUD_LOGI("nvenc-direct: %s %dx%d @ %.3f fps, %d kbps CBR (%s/ull)",
+    KLOUD_LOGI("nvenc-direct: %s %dx%d @ %.3f fps, %d kbps CBR (%s/ull), "
+             "IDR every %u",
              videoCodecName(codec_), w_, h_, fps, bitrateKbps,
-             encoderPresetName(preset));
+             encoderPresetName(preset), cfg_.gopLength);
     return true;
 }
 

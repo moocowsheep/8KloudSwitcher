@@ -15,7 +15,8 @@ sudo cp scripts/tuning-sysctl.conf /etc/sysctl.d/90-8kloud-switcher.conf
 sudo sysctl --system
 ```
 
-SRT URLs: `latency` is in **microseconds** in FFmpeg URLs (the GUI shows ms).
+SRT URLs: `latency` is in **microseconds** in FFmpeg URLs (the SRT STREAM card
+takes ms and writes the URL for you).
 Leave `maxbw` unset (libsrt's live-mode default ~1 Gbps cap is fine for
 80–200 Mbps); never set `maxbw=0` without an explicit `inputbw`.
 

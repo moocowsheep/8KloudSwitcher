@@ -278,7 +278,7 @@ bool Engine::start(const EngineConfig& cfg) {
     if (!buildLabelAtlas()) return false;
 
     const bool needCuda =
-        !cfg_.srtUrl.empty() ||
+        cfg_.srtEnabled() ||
         std::any_of(cfg_.inputs.begin(), cfg_.inputs.end(), [](const InputSpec& s) {
             return s.type == InputSpec::Type::Srt ||
                    s.type == InputSpec::Type::Media;
@@ -366,13 +366,14 @@ bool Engine::start(const EngineConfig& cfg) {
         }
     }
 
-    if (!cfg_.srtUrl.empty()) {
+    if (cfg_.srtEnabled()) {
         srtOut_ = std::make_unique<SrtOutput>(
             vk_, cuda_, *comp_, renderTL_,
             SrtOutConfig{cfg_.srtUrl,
                          {cfg_.encoder, cfg_.encoderPreset,
                           cfg_.srtBitrateKbps, /*globalHeader=*/false,
-                          cfg_.srtCodec}},
+                          cfg_.srtCodec, cfg_.srtKeyframeMs},
+                         cfg_.srtAudioKbps},
             cfg_.show,
             cfg_.audio);
         if (!srtOut_->ok()) {

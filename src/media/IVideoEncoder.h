@@ -58,12 +58,21 @@ struct EncoderConfig {
     int bitrateKbps = 0;        // 0 = auto from resolution/fps
     bool globalHeader = false;  // muxer takes codec headers as extradata
     VideoCodec codec = VideoCodec::Hevc;
+    // IDR interval. A stream viewer joins at the next IDR, so a short
+    // interval trades bits for join time; 0 = the 2 s default.
+    int keyframeMs = 0;
 };
+
+constexpr int kDefaultKeyframeMs = 2000;
+// GOP length in frames for this show: keyframeMs (or the default) at the
+// show rate, never below one frame.
+int gopFrames(const EncoderConfig& cfg, const VideoFormatDesc& show);
 
 // Program encoder fed by the render thread's tight-pitch NV12 pack
 // buffers (luma rows then interleaved chroma, pitch == width, device memory).
 // Both backends are tuned the same way: no B-frames, CBR with a single-frame
-// VBV, IDR every ~2 s, and the codec headers required by the muxer.
+// VBV, IDR every keyframeMs (~2 s by default), and the codec headers
+// required by the muxer.
 // PTS is the media tick index in show timebase (fpsD/fpsN).
 //
 // `encode` returns only once `src` is free for reuse -- that return is the

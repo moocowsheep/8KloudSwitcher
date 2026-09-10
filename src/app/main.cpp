@@ -54,6 +54,7 @@ void usage() {
             "  --clean-omt-out NAME      clean-feed OMT sender\n"
             "  --sdi-out REF | --clean-sdi-out REF   DeckLink outputs\n"
             "  --srt-out URL [--srt-bitrate KBPS] [--srt-codec hevc|av1]\n"
+            "      [--srt-keyframe SEC] [--srt-audio-bitrate KBPS]\n"
             "  --record PATH.mkv | --clean-record PATH.mkv [--record-bitrate KBPS]\n"
             "  --encoder auto|ffmpeg|direct  --encoder-preset auto|p1..p7\n"
             "  --validate                Vulkan validation layer\n");
@@ -139,15 +140,20 @@ int main(int argc, char** argv) {
             if (!parseWxH(next(), cfg.show.width, cfg.show.height)) return 2;
             cfg.show.colorimetry =
                 kloud::VideoFormatDesc::colorimetryForHeight(cfg.show.height);
-        } else if (a == "--srt-out")
+        } else if (a == "--srt-out") {
             cfg.srtUrl = next();
-        else if (a == "--srt-bitrate")
+            cfg.srtSend = true;  // the flag means send, whatever the show parked
+        } else if (a == "--srt-bitrate")
             cfg.srtBitrateKbps = atoi(next());
         else if (a == "--srt-codec") {
             const char* name = next();
             if (!kloud::media::parseVideoCodec(name, cfg.srtCodec))
                 KLOUD_LOGW("unknown --srt-codec '%s'; using hevc", name);
-        } else if (a == "--encoder-preset") {
+        } else if (a == "--srt-keyframe")
+            cfg.srtKeyframeMs = int(atof(next()) * 1000.0 + 0.5);
+        else if (a == "--srt-audio-bitrate")
+            cfg.srtAudioKbps = atoi(next());
+        else if (a == "--encoder-preset") {
             const char* name = next();
             if (!kloud::media::parseEncoderPreset(name, cfg.encoderPreset))
                 KLOUD_LOGW("unknown --encoder-preset '%s'; using auto", name);

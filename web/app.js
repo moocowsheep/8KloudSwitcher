@@ -771,8 +771,9 @@ function fillFormatSelects() {
       const key = input.dataset.setting;
       const msg = { cmd: 'settings' };
       if (key === 'mvSize') { const [w, h] = input.value.split('x').map(Number); msg.mvW = w; msg.mvH = h; }
+      else if (key === 'srtKeyframeSec') msg.srtKeyframeMs = Math.round((Number(input.value) || 0) * 1000);
       else if (input.type === 'checkbox') msg[key] = input.checked;
-      else if (input.type === 'number') msg[key] = Number(input.value) || 0;
+      else if (input.type === 'number' || input.dataset.numeric !== undefined) msg[key] = Number(input.value) || 0;
       else msg[key] = input.value.trim();
       cmd(msg);
     });
@@ -809,10 +810,18 @@ function refreshSettings(ui) {
     if (S.editing.has(input)) return;
     const key = input.dataset.setting;
     if (key === 'mvSize') { ensureOption(input, `${p.mvW}x${p.mvH}`, `${p.mvW} × ${p.mvH}`); input.value = `${p.mvW}x${p.mvH}`; }
+    else if (key === 'srtSend') input.checked = !!(p.srtSend && p.srtOut);  // parked URL reads as off
+    else if (key === 'srtKeyframeSec') input.value = p.srtKeyframeMs ? p.srtKeyframeMs / 1000 : '';
     else if (input.type === 'checkbox') input.checked = !!p[key];
+    else if (input.tagName === 'SELECT') input.value = String(p[key] ?? '');
     else if (input.type === 'number') input.value = p[key] || '';
     else input.value = p[key] || '';
   });
+  // The auto bitrate the encoder would pick for the pending format, so the
+  // empty field says what it means.
+  const autoKbps = Math.max(8000, Math.round(p.show.width * p.show.height * (p.show.fpsN / p.show.fpsD) * 0.04 / 1000));
+  $('settings').querySelector('[data-setting=srtBitrateKbps]').placeholder = `auto ${autoKbps}`;
+  $('settings').querySelector('[data-setting=recordBitrateKbps]').placeholder = `auto ${autoKbps}`;
   const live = (id, o, what) => {
     const node = $(id);
     if (!o.configured) { node.textContent = `${what}: off`; node.className = 'live-note'; return; }
@@ -825,7 +834,9 @@ function refreshSettings(ui) {
   const sdi = $('liveSdiOut');
   sdi.textContent = `Program: ${ui.outputs.sdiOut.configured ? (ui.outputs.sdiOut.up ? 'UP' : 'DOWN') : 'off'} · Clean: ${ui.outputs.cleanSdiOut.configured ? (ui.outputs.cleanSdiOut.up ? 'UP' : 'DOWN') : 'off'}`;
   const srt = $('liveSrt');
-  srt.textContent = ui.outputs.srt.configured ? `Live: ${ui.outputs.srt.connected ? 'CONNECTED' : 'WAITING FOR PEER'} · ${ui.outputs.srt.frames} frames encoded` : 'Live: off';
+  srt.textContent = ui.outputs.srt.configured
+    ? `Live: ${ui.outputs.srt.connected ? 'CONNECTED' : 'WAITING FOR PEER'} · ${ui.outputs.srt.frames} frames encoded · ${a.srtOut}`
+    : `Live: off${a.srtOut && !a.srtSend ? ' (parked)' : ''}`;
   srt.className = `live-note ${ui.outputs.srt.configured ? (ui.outputs.srt.connected ? 'up' : 'down') : ''}`;
   $('liveRecord').textContent = `Program: ${ui.record.active ? `REC ${ui.record.frames}` : 'idle'} · Clean: ${ui.cleanRecord.active ? `REC ${ui.cleanRecord.frames}` : 'idle'}`;
   $('showPath').textContent = ui.showPath || '(no show file)';

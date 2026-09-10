@@ -79,7 +79,9 @@ private:
     json::Value sourcesJson() const;
     json::Value listDirectory(const std::string& path) const;
     json::Value settingsJson() const;
-    void applySettings(const json::Value& s);
+    // Returns a message for the operator when a value was refused (the rest
+    // of the message is still applied); empty on success.
+    std::string applySettings(const json::Value& s);
 
     Engine& engine_;
     app::Session& session_;

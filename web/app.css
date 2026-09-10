@@ -192,6 +192,12 @@ input[type="number"] { width: 78px; }
 
 /* settings */
 .settings-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.keyer-card.srt-card { grid-column: span 3; }
+.settings-columns { display: flex; gap: 12px; }
+.settings-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.settings-col:first-child { flex: 1.35 1 0; }
+.settings-col .row > select { min-width: 0; }
+.settings-col .row > input.mono { font-size: 10px; }
 .live-note { color: #7c838b; font-size: 9px; line-height: 1.5; word-break: break-all; }
 .live-note.up { color: #6fe39b; }
 .live-note.down { color: #ffb347; }

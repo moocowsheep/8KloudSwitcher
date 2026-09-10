@@ -62,9 +62,28 @@ Keyboard: `Space` cut, `Enter` auto, `F` fade to black, `1–9` program,
 a text field or dialog has focus.
 
 Settings on the OUTPUTS tab (output format, OMT senders, SDI outputs, SRT
-output, bitrates) are written to the show file the moment they change and
+stream, bitrates) are written to the show file the moment they change and
 take effect on the next start; the amber RESTART TO APPLY badge tracks the
 difference between what is saved and what is running.
+
+The SRT STREAM card has two halves. Transport: SEND, mode (listener waits
+for the viewer, caller connects out, rendezvous meets in the middle), host,
+port, latency in milliseconds, passphrase with AES key length, stream id,
+and an EXTRA line for any other FFmpeg `srt` option (`pkt_size=1316&maxbw=0`).
+The URL line shows the FFmpeg URL those fields compose (`latency=` there is
+in microseconds, as FFmpeg reads it); it is what the show file stores under
+`srtOut` and what `--srt-out` takes, so pasting a complete URL into it fills
+the fields from that URL, and a hand-typed option the card has no field for
+lands in EXTRA. Turning SEND off parks the URL rather than clearing it.
+Encoding: codec (HEVC, or AV1 with the patched FFmpeg), video bitrate (empty
+= auto, the placeholder says how much), AAC bitrate, keyframe interval in
+seconds (a viewer joins at the next IDR), NVENC preset and NVENC path. The
+preset and path are shared with recording, as `--encoder-preset` and
+`--encoder` always were; the rest of the tuning (CBR, ultra-low-latency,
+single-frame VBV, no B-frames, no lookahead) is fixed, see
+`docs/design-encoder.md`. A passphrase outside libsrt's 10..79 characters
+or a `&` inside a value is refused with an error event and the field snaps
+back.
 
 ## OMT multiview
 
@@ -108,7 +127,7 @@ INPUTS tab.
 | `sync` | `input`, `sync` | Frame sync only, keeping the source and playlist |
 | `audioDelay` | `input`, `ms` | Manual audio delay trim (0..500) |
 | `masterDelay` | `ms` | Master A/V calibration delay (0..200) |
-| `settings` | any of `show:{width,height,fpsN,fpsD}`, `omtOut`, `omtOutName`, `cleanOmtOut`, `cleanOmtOutName`, `mvOmtOut`, `mvOmtOutName`, `mvW`+`mvH`, `sdiOut`, `cleanSdiOut`, `srtOut`, `srtBitrateKbps`, `srtCodec`, `recordBitrateKbps` | Restart-to-apply settings, saved to the show file |
+| `settings` | any of `show:{width,height,fpsN,fpsD}`, `omtOut`, `omtOutName`, `cleanOmtOut`, `cleanOmtOutName`, `mvOmtOut`, `mvOmtOutName`, `mvW`+`mvH`, `sdiOut`, `cleanSdiOut`, `srtOut` (whole URL) or the fields `srtMode` `srtHost` `srtPort` `srtLatencyMs` `srtPassphrase` `srtKeyLen` (0/16/24/32) `srtStreamId` `srtExtra` that fold into it, `srtSend`, `srtBitrateKbps`, `srtCodec`, `srtKeyframeMs`, `srtAudioKbps`, `encoder` (`auto` `ffmpeg` `direct`), `encoderPreset` (`auto` `p1`..`p7`), `recordBitrateKbps` | Restart-to-apply settings, saved to the show file. A refused value (passphrase length, `&` in a field) is an `error` event; the rest still applies. The `ui` document's `settings.pending`/`active` carry every key, the SRT fields as parsed from the stored URL |
 | `sources` | | Reply with `{"event":"sources","omt":[…],"decklink":[{label,ref}]}` |
 | `ls` | `path` | Reply with `{"event":"ls",path,parent,dirs:[…],files:[{name,size,still}]}` |
 | `ui` | | Reply with the rich state document |

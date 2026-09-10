@@ -58,9 +58,17 @@ struct EngineConfig {
     // Half duplex means a sub-device doing this cannot also capture.
     std::string sdiOutRef;
     std::string cleanSdiOutRef;
-    std::string srtUrl;      // empty = SRT output off
+    // SRT program output: the FFmpeg URL (core/SrtUrl.h splits it into the
+    // fields the console edits); empty = off. srtSend=false parks a
+    // configured URL so the OUTPUTS tab can switch the stream off and on
+    // without retyping it.
+    std::string srtUrl;
+    bool srtSend = true;
     int srtBitrateKbps = 0;  // 0 = auto
     media::VideoCodec srtCodec = media::VideoCodec::Hevc;
+    int srtKeyframeMs = 0;   // IDR interval, 0 = 2 s
+    int srtAudioKbps = 0;    // AAC bitrate, 0 = 160
+    bool srtEnabled() const { return srtSend && !srtUrl.empty(); }
     int recordBitrateKbps = 0;  // 0 = auto; independent of SRT output
     // NVENC path and speed/quality preset for SRT output and recording
     // (--encoder, --encoder-preset).

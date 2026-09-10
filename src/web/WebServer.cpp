@@ -29,6 +29,7 @@
 #include "app/Session.h"
 #include "core/Log.h"
 #include "core/MediaClock.h"
+#include "core/SrtUrl.h"
 #include "core/Stats.h"
 #include "ctl/ControlApply.h"
 #include "decklink/DeckLinkRef.h"
@@ -190,6 +191,10 @@ void WebServer::encodeLoop(std::stop_token st) {
 
 json::Value WebServer::settingsJson() const {
     auto encode = [](const EngineConfig& c) {
+        // The URL split into the fields the SRT card edits. An unparsable
+        // URL (not srt://) reports the defaults; the raw line still shows it.
+        SrtUrl srt;
+        SrtUrl::parse(c.srtUrl, srt);
         return json::Value{
             {"show", fmtJson(c.show)},
             {"omtOut", c.omtOut},
@@ -203,9 +208,22 @@ json::Value WebServer::settingsJson() const {
             {"sdiOut", c.sdiOutRef},
             {"cleanSdiOut", c.cleanSdiOutRef},
             {"srtOut", c.srtUrl},
+            {"srtSend", c.srtSend},
+            {"srtMode", SrtUrl::modeName(srt.mode)},
+            {"srtHost", srt.host},
+            {"srtPort", srt.port},
+            {"srtLatencyMs", srt.latencyMs},
+            {"srtPassphrase", srt.passphrase},
+            {"srtKeyLen", srt.keyLen},
+            {"srtStreamId", srt.streamId},
+            {"srtExtra", srt.extra},
             {"srtBitrateKbps", c.srtBitrateKbps},
             {"srtCodec", media::videoCodecName(c.srtCodec)},
+            {"srtKeyframeMs", c.srtKeyframeMs},
+            {"srtAudioKbps", c.srtAudioKbps},
             {"recordBitrateKbps", c.recordBitrateKbps},
+            {"encoder", media::encoderBackendName(c.encoder)},
+            {"encoderPreset", media::encoderPresetName(c.encoderPreset)},
             {"audio", c.audio},
         };
     };
@@ -472,8 +490,9 @@ json::Value WebServer::listDirectory(const std::string& requested) const {
                        {"files", std::move(files)}};
 }
 
-void WebServer::applySettings(const json::Value& s) {
+std::string WebServer::applySettings(const json::Value& s) {
     EngineConfig cfg = session_.pendingConfig();
+    std::string refused;
     if (s["show"].isObject()) {
         const auto& f = s["show"];
         const int w = f["width"].asInt(cfg.show.width);
@@ -511,16 +530,104 @@ void WebServer::applySettings(const json::Value& s) {
     if (s["sdiOut"].isString()) cfg.sdiOutRef = sdiRef(s["sdiOut"].asString());
     if (s["cleanSdiOut"].isString())
         cfg.cleanSdiOutRef = sdiRef(s["cleanSdiOut"].asString());
-    if (s["srtOut"].isString()) cfg.srtUrl = s["srtOut"].asString();
+    // The SRT address: either the whole URL, or one or more of the fields
+    // it splits into, folded back into the stored URL. A pasted URL wins
+    // over fields in the same message.
+    auto trimmed = [](const std::string& text) {
+        const auto b = text.find_first_not_of(" \t\r\n");
+        if (b == std::string::npos) return std::string();
+        const auto e = text.find_last_not_of(" \t\r\n");
+        return text.substr(b, e - b + 1);
+    };
+    if (s["srtOut"].isString()) {
+        cfg.srtUrl = trimmed(s["srtOut"].asString());
+    } else {
+        SrtUrl url;
+        SrtUrl::parse(cfg.srtUrl, url);
+        bool edited = false;
+        // FFmpeg reads the query verbatim, so a '&' or '?' inside a value
+        // would split it; a passphrase outside libsrt's length range is
+        // refused at connect time with a far less helpful message.
+        auto field = [&](const char* key, std::string& into) {
+            if (!s[key].isString()) return;
+            const std::string v = trimmed(s[key].asString());
+            if (v.find_first_of("&?") != std::string::npos) {
+                refused = std::string(key) + " cannot contain '&' or '?'";
+                return;
+            }
+            into = v;
+            edited = true;
+        };
+        if (s["srtMode"].isString() &&
+            SrtUrl::parseMode(s["srtMode"].asString(), url.mode))
+            edited = true;
+        field("srtHost", url.host);
+        if (s["srtPort"].isNumber()) {
+            const int port = s["srtPort"].asInt();
+            if (port >= 1 && port <= 65535) {
+                url.port = port;
+                edited = true;
+            } else {
+                refused = "srtPort must be 1..65535";
+            }
+        }
+        if (s["srtLatencyMs"].isNumber()) {
+            url.latencyMs = std::clamp(s["srtLatencyMs"].asInt(), 0, 10000);
+            edited = true;
+        }
+        std::string passphrase = url.passphrase;
+        field("srtPassphrase", passphrase);
+        if (passphrase != url.passphrase) {
+            if (!passphrase.empty() &&
+                (passphrase.size() < 10 || passphrase.size() > 79))
+                refused = "passphrase must be 10..79 characters (or empty)";
+            else
+                url.passphrase = passphrase;
+        }
+        if (s["srtKeyLen"].isNumber()) {
+            const int k = s["srtKeyLen"].asInt();
+            if (k == 0 || k == 16 || k == 24 || k == 32) {
+                url.keyLen = k;
+                edited = true;
+            }
+        }
+        field("srtStreamId", url.streamId);
+        if (s["srtExtra"].isString()) {
+            std::string extra = trimmed(s["srtExtra"].asString());
+            while (!extra.empty() && (extra.front() == '?' || extra.front() == '&'))
+                extra.erase(0, 1);
+            url.extra = extra;
+            edited = true;
+        }
+        if (edited) cfg.srtUrl = url.compose();
+    }
+    if (s["srtSend"].isBool()) {
+        cfg.srtSend = s["srtSend"].asBool();
+        // Switching on with nothing configured starts from the README's
+        // listener; the operator then edits the fields.
+        if (cfg.srtSend && cfg.srtUrl.empty()) cfg.srtUrl = SrtUrl{}.compose();
+    }
     if (s["srtBitrateKbps"].isNumber())
         cfg.srtBitrateKbps = std::max(0, s["srtBitrateKbps"].asInt());
     if (s["srtCodec"].isString())
         media::parseVideoCodec(s["srtCodec"].asString(), cfg.srtCodec);
+    if (s["srtKeyframeMs"].isNumber())
+        cfg.srtKeyframeMs = std::clamp(s["srtKeyframeMs"].asInt(), 0, 60000);
+    if (s["srtAudioKbps"].isNumber()) {
+        const int kbps = s["srtAudioKbps"].asInt();
+        cfg.srtAudioKbps = kbps <= 0 ? 0 : std::clamp(kbps, 32, 512);
+    }
     if (s["recordBitrateKbps"].isNumber())
         cfg.recordBitrateKbps = std::max(0, s["recordBitrateKbps"].asInt());
+    if (s["encoder"].isString())
+        media::parseEncoderBackend(s["encoder"].asString(), cfg.encoder);
+    if (s["encoderPreset"].isString())
+        media::parseEncoderPreset(s["encoderPreset"].asString(),
+                                  cfg.encoderPreset);
     for (auto* name : {&cfg.omtOutName, &cfg.cleanOmtOutName, &cfg.mvOmtOutName})
         if (name->empty()) *name = "8Kloud Switcher";
     session_.setPendingConfig(cfg);
+    return refused;
 }
 
 // -- request handling --------------------------------------------------------
@@ -715,7 +822,8 @@ void WebServer::handleWsJson(Client& c, const json::Value& msg) {
         if (!inputIndex(idx) || idx >= aud->inputCount()) return;
         aud->channel(idx).delayMs.store(ms, std::memory_order_relaxed);
     } else if (cmd == "settings") {
-        applySettings(msg);
+        if (const std::string refused = applySettings(msg); !refused.empty())
+            sendError(c, refused);
         send(c, wsText(uiJson()));
     } else {
         sendError(c, "unknown command '" + cmd + "'");

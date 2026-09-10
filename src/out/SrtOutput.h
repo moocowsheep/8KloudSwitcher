@@ -24,9 +24,12 @@ extern "C" {
 namespace kloud {
 
 struct SrtOutConfig {
-    std::string url;  // srt://host:port?mode=...&latency=<usec>...
+    std::string url;  // srt://host:port?mode=...&latency=<usec>... (core/SrtUrl.h)
     media::EncoderConfig encoder;  // bitrate 0 = auto from resolution/fps
+    int audioKbps = 0;             // AAC bitrate, 0 = 160
 };
+
+constexpr int kDefaultSrtAudioKbps = 160;
 
 // SRT HEVC/AV1 program output. The render thread packs NV12 into per-FIF
 // exportable buffers and pushes {value, tick, fif} events; the encode thread

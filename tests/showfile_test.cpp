@@ -45,10 +45,23 @@ TEST_CASE("show file preserves the exact output format") {
     saved.cfg.mvOmtOut = true;
     saved.cfg.mvOmtOutName = "8Kloud Switcher MV, wall";
     saved.cfg.srtCodec = media::VideoCodec::Av1;
+    saved.cfg.srtUrl = "srt://relay:5000?mode=caller&latency=250000"
+                       "&passphrase=correcthorse&pbkeylen=32";
+    saved.cfg.srtSend = false;
+    saved.cfg.srtKeyframeMs = 500;
+    saved.cfg.srtAudioKbps = 256;
+    saved.cfg.encoder = media::EncoderBackend::Direct;
+    saved.cfg.encoderPreset = media::EncoderPreset::P6;
     REQUIRE(file.save(saved));
 
     ShowFile::State restored;
     REQUIRE(file.load(restored));
+    CHECK(restored.cfg.srtUrl == saved.cfg.srtUrl);
+    CHECK_FALSE(restored.cfg.srtSend);
+    CHECK(restored.cfg.srtKeyframeMs == 500);
+    CHECK(restored.cfg.srtAudioKbps == 256);
+    CHECK(restored.cfg.encoder == media::EncoderBackend::Direct);
+    CHECK(restored.cfg.encoderPreset == media::EncoderPreset::P6);
     CHECK(restored.cfg.show.width == 4096);
     CHECK(restored.cfg.show.height == 2160);
     CHECK(restored.cfg.show.fpsN == 24000);
@@ -174,6 +187,14 @@ TEST_CASE("show file written by the Qt GUI loads") {
     CHECK(st.cfg.show.width == 1920);
     CHECK(st.cfg.show.fpsN == 60000);
     CHECK(st.cfg.srtUrl == "srt://:9710?mode=listener&latency=120000");
+    // No srtSend key yet: a stored URL was live, and the encoder knobs that
+    // used to be CLI-only are at their defaults.
+    CHECK(st.cfg.srtSend);
+    CHECK(st.cfg.srtEnabled());
+    CHECK(st.cfg.srtKeyframeMs == 0);
+    CHECK(st.cfg.srtAudioKbps == 0);
+    CHECK(st.cfg.encoder == media::EncoderBackend::Auto);
+    CHECK(st.cfg.encoderPreset == media::EncoderPreset::Auto);
     CHECK(st.cfg.masterAudioDelayMs == 10);
     REQUIRE(st.cfg.inputs.size() == 2);
     CHECK(st.cfg.inputs[0].ref == "SATURN (CamA)");

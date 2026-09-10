@@ -275,6 +275,60 @@ TEST_CASE("web: page, handshake, commands, listing and multiview stream") {
         CHECK(session.restartRequired());
         CHECK(session.collect().cfg.mvOmtOut);
 
+        // The SRT card's fields fold into the stored URL; the parsed view
+        // comes back alongside it, and a refused value is an error event
+        // that does not lose the rest of the message.
+        REQUIRE(sendAll(fd, clientText(
+            R"({"cmd":"settings","srtSend":true,"srtMode":"caller","srtHost":"relay","srtPort":5000,)"
+            R"("srtLatencyMs":250,"srtPassphrase":"correcthorse","srtKeyLen":32,)"
+            R"("srtStreamId":"#!::r=live/a,m=publish","srtKeyframeMs":500,"srtAudioKbps":256,)"
+            R"("encoderPreset":"p6","encoder":"direct"})")));
+        REQUIRE(awaitFrame(fd, buf, [](const Frame& x) {
+            const auto v = eventNamed(x, "ui");
+            return !v.isNull() && v["settings"]["pending"]["srtHost"].asString() == "relay";
+        }, f));
+        {
+            const json::Value p = eventNamed(f, "ui")["settings"]["pending"];
+            CHECK(p["srtOut"].asString() ==
+                  "srt://relay:5000?mode=caller&latency=250000&passphrase=correcthorse"
+                  "&pbkeylen=32&streamid=#!::r=live/a,m=publish");
+            CHECK(p["srtSend"].asBool());
+            CHECK(p["srtMode"].asString() == "caller");
+            CHECK(p["srtPort"].asInt() == 5000);
+            CHECK(p["srtLatencyMs"].asInt() == 250);
+            CHECK(p["srtKeyLen"].asInt() == 32);
+            CHECK(p["srtKeyframeMs"].asInt() == 500);
+            CHECK(p["srtAudioKbps"].asInt() == 256);
+            CHECK(p["encoderPreset"].asString() == "p6");
+            CHECK(p["encoder"].asString() == "direct");
+        }
+        CHECK(session.pendingConfig().srtKeyframeMs == 500);
+        CHECK(session.pendingConfig().encoderPreset == media::EncoderPreset::P6);
+        REQUIRE(sendAll(fd, clientText(
+            R"({"cmd":"settings","srtPassphrase":"short","srtPort":6000})")));
+        REQUIRE(awaitFrame(fd, buf, [](const Frame& x) {
+            return !eventNamed(x, "error").isNull();
+        }, f));
+        CHECK(eventNamed(f, "error")["message"].asString().find("passphrase") !=
+              std::string::npos);
+        REQUIRE(awaitFrame(fd, buf, [](const Frame& x) {
+            const auto v = eventNamed(x, "ui");
+            return !v.isNull() && v["settings"]["pending"]["srtPort"].asInt() == 6000;
+        }, f));
+        CHECK(eventNamed(f, "ui")["settings"]["pending"]["srtPassphrase"].asString() ==
+              "correcthorse");
+        // A pasted URL replaces everything; SEND off parks it.
+        REQUIRE(sendAll(fd, clientText(
+            R"({"cmd":"settings","srtOut":"srt://:9710?mode=listener&latency=120000","srtSend":false})")));
+        REQUIRE(awaitFrame(fd, buf, [](const Frame& x) {
+            const auto v = eventNamed(x, "ui");
+            return !v.isNull() && !v["settings"]["pending"]["srtSend"].asBool(true);
+        }, f));
+        CHECK(eventNamed(f, "ui")["settings"]["pending"]["srtMode"].asString() == "listener");
+        CHECK(eventNamed(f, "ui")["settings"]["pending"]["srtOut"].asString() ==
+              "srt://:9710?mode=listener&latency=120000");
+        CHECK_FALSE(session.pendingConfig().srtEnabled());
+
         // Directory listing for the clip/still browser.
         REQUIRE(sendAll(fd, clientText(R"({"cmd":"ls","path":"/"})")));
         REQUIRE(awaitFrame(fd, buf, [](const Frame& x) {

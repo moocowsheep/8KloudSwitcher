@@ -82,8 +82,14 @@ controls above the multiview. The choice is saved immediately to the show file; 
 8Kloud Switcher when the amber **RESTART TO APPLY** badge appears. The selected format drives
 both OMT and SRT program outputs on the next start. The **OUTPUTS** tab holds the rest of the
 restart-to-apply settings the same way: the program, clean and multiview OMT senders (enable
-and name, multiview wall size), SDI outputs, the SRT output URL/codec/bitrate, and the
-recording bitrate.
+and name, multiview wall size), SDI outputs, the **SRT STREAM** card, and the
+recording bitrate. The SRT card sets the transport (send on/off, listener / caller /
+rendezvous, host, port, latency in ms, passphrase and AES key length, stream id, any
+other FFmpeg `srt` option) and the encoding (HEVC or AV1, video and AAC bitrates, keyframe
+interval, NVENC preset and path). The fields are folded into one FFmpeg URL, shown on the
+card's URL line, which is what the show file stores and `--srt-out` takes; paste a complete
+URL there and the fields fill in from it. Headless: `--srt-out URL --srt-bitrate KBPS
+--srt-codec hevc|av1 --srt-keyframe SEC --srt-audio-bitrate KBPS`.
 
 Record the program mix with the red **RECORD** control in the top bar. Recordings
 are HEVC video plus 48 kHz stereo AAC in a finalized Matroska (`.mkv`) file;
@@ -147,7 +153,8 @@ A second backend drives NVENC directly through `libnvidia-encode`, so an FFmpeg
 build without `hevc_nvenc` cannot take program output down; `--encoder
 auto|ffmpeg|direct` selects one in either executable (`auto` falls back to the
 direct path when FFmpeg has no usable HEVC or AV1 encoder). The two are configured
-identically (ultra-low-latency, CBR, single-frame VBV, no B-frames) and measure
+identically (ultra-low-latency, CBR, single-frame VBV, no B-frames, an IDR every
+2 s or `--srt-keyframe SEC`) and measure
 the same at every resolution tested.
 
 `--encoder-preset auto|p1..p7` sets the NVENC speed/quality preset. `auto`

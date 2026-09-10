@@ -21,6 +21,7 @@ add_library(kloud_core STATIC
   src/audio/AudioEngine.cpp
   src/core/Ini.cpp
   src/core/Json.cpp
+  src/core/SrtUrl.cpp
   src/ctl/ControlProtocol.cpp
 )
 target_include_directories(kloud_core PUBLIC src)
@@ -367,6 +368,7 @@ if(KLOUD_BUILD_TESTS)
     tests/media_playlist_test.cpp
     tests/ini_test.cpp
     tests/json_test.cpp
+    tests/srt_url_test.cpp
     tests/http_test.cpp
     tests/showfile_test.cpp
     tests/web_server_test.cpp

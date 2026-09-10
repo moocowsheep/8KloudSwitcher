@@ -30,7 +30,9 @@ SrtOutput::SrtOutput(gpu::VkEngine& vk, media::CudaCtx& cuda,
 
     enc_ = media::openVideoEncoder(cuda_, show_, cfg_.encoder);
     if (!enc_) return;
-    if (withAudio && !aac_.open(48000, 160'000))
+    const int audioKbps =
+        cfg_.audioKbps > 0 ? cfg_.audioKbps : kDefaultSrtAudioKbps;
+    if (withAudio && !aac_.open(48000, audioKbps * 1000))
         KLOUD_LOGW("srt out: aac encoder unavailable; sending video-only");
 
     for (int f = 0; f < gpu::Compositor::kFramesInFlight; ++f) {
